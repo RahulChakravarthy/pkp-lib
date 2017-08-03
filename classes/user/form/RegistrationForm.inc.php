@@ -191,6 +191,7 @@ class RegistrationForm extends Form {
 	 */
 	function execute($request) {
 		$requireValidation = Config::getVar('email', 'require_validation');
+		$requireMediation = Config::getVar('security', 'require_mediation');
 		$userDao = DAORegistry::getDAO('UserDAO');
 
 		// New user
@@ -217,13 +218,22 @@ class RegistrationForm extends Form {
 			$user->setAuthId($this->defaultAuth->authId);
 		}
 		$user->setPassword(Validation::encryptCredentials($this->getData('username'), $this->getData('password')));
-
+		
 		if ($requireValidation) {
 			// The account should be created in a disabled
 			// state.
-			$user->setDisabled(true);
+			$user->setDisabled(USER_DISABLED_EMAIL_VALIDATION);
 			$user->setDisabledReason(__('user.login.accountNotValidated', array('email' => $this->getData('email'))));
 		}
+		
+		if ($requireMediation){
+			//Append potential additional disable messages
+			$user->setDisabled($user->getDisabled() | USER_DISABLED_MEDIATION);
+			$message = ($requireValidation)? '\n\n' : '';
+			$message .= __('user.login.editorNotValidated');
+			$user->setDisabledReason($user->getDisabledReason() . $message);
+		}
+		
 
 		parent::execute($user);
 
